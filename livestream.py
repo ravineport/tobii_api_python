@@ -16,16 +16,16 @@ GLASSES_IP = "192.168.71.50"  # IPv4 address
 PORT = 49152
 
 # Keep-alive message content used to request live data and live video streams
-KA_DATA_MSG = "{\"type\": \"live.data.unicast\", \"key\": \"some_GUID\", \"op\": \"start\"}"
-KA_VIDEO_MSG = "{\"type\": \"live.video.unicast\", \"key\": \"some_other_GUID\", \"op\": \"start\"}"
+KA_DATA_MSG = "{\"type\": \"live.data.unicast\", \"key\": \"some_GUID1\", \"op\": \"start\"}"
+KA_VIDEO_MSG = "{\"type\": \"live.video.unicast\", \"key\": \"some_other_GUID1\", \"op\": \"start\"}"
 
 # Gstreamer pipeline definition used to decode and display the live video stream
-PIPELINE_DEF = "udpsrc do-timestamp=true name=src blocksize=1316 closefd=false buffer-size=5600 !" \
-               "mpegtsdemux !" \
-               "queue !" \
-               "ffdec_h264 max-threads=0 !" \
-               "ffmpegcolorspace !" \
-               "xvimagesink name=video"
+# PIPELINE_DEF = "udpsrc do-timestamp=true name=src blocksize=1316 closefd=false buffer-size=5600 !" \
+#                "mpegtsdemux !" \
+#                "queue !" \
+#                "ffdec_h264 max-threads=0 !" \
+#                "ffmpegcolorspace !" \
+#                "xvimagesink name=video"
 
 
 # Create UDP socket
@@ -39,7 +39,7 @@ def mksock(peer):
 # Callback function
 def send_keepalive_msg(socket, msg, peer):
     while running:
-        print("Sending " + msg + " to target " + peer[0] + " socket no: " + str(socket.fileno()) + "\n")
+        # print("Sending " + msg + " to target " + peer[0] + " socket no: " + str(socket.fileno()) + "\n")
         socket.sendto(msg, peer)
         time.sleep(timeout)
 
@@ -69,9 +69,10 @@ if __name__ == "__main__":
     tv.start()
 
     while True:
-        data, addr = video_socket.recvfrom(1024)
-        cv2.imshow('test', data)
-        # print "received message:", data
+        data, addr = video_socket.recvfrom(2048)
+        # cv2.imshow('test', data)
+        # print data
+        sys.stdout.write(data)
         # bytes = ''
         # try:
         #     bytes += data
