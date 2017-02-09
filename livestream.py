@@ -5,8 +5,46 @@ import socket
 import threading
 import signal
 import sys
+import struct
 import cv2
 import numpy as np
+
+
+class MpegTsPacketParser:
+    def __init__(self):
+        self.PAT_id = 0x0
+        self.packet_size = 188
+
+    def parse_for_tobii(self, packet):
+        offset = 0
+        payload_unit_start_indicator_idx = -1
+        data_lst = []
+        packet_size = len(packet) / 188
+
+        for i in range(0, packet_size):
+            ts_packet = packet[offset:offset + self.packet_size]
+            packet_header = struct.unpack('>L', ts_packet[:4])[0]
+            ts_packet = ts_packet[4:]
+            sync_byte = (packet_header >> 24)
+            if sync_byte != 0x47:
+                print 'Oops! Can NOT found Sync_Byte! maybe something wrong with the file'
+
+            payload_unit_start_indicator = (packet_header >> 22) & 0x1
+            pid = ((packet_header >> 8) & 0x1FFF)
+            adaptation_field_ctrl = ((packet_header >> 4) & 0x3)
+            adaptation_field_length = 0
+
+            if (adaptation_field_ctrl == 0x2) | (adaptation_field_ctrl == 0x3):
+                # adaption_fieldをとりあえずカット
+                adaptation_field_size = struct.unpack('>B', ts_packet[:1])[0]
+                ts_packet = ts_packet[adaptation_field_size+1:]
+
+            if pid == 0x40:
+                if payload_unit_start_indicator == 1:
+                    payload_unit_start_indicator_idx = len(data_lst)
+                data_lst.append(ts_packet)
+
+        return payload_unit_start_indicator_idx, data_lst
 
 timeout = 1.0
 running = True
@@ -55,6 +93,7 @@ def stop_sending_msg():
 
 
 if __name__ == "__main__":
+    mpeg_ts_parser = MpegTsPacketParser()
     signal.signal(signal.SIGINT, signal_handler)
     peer = (GLASSES_IP, PORT)
 
@@ -68,11 +107,23 @@ if __name__ == "__main__":
     tv = threading.Timer(0, send_keepalive_msg, [video_socket, KA_VIDEO_MSG, peer])
     tv.start()
 
+    img = []
+
     while True:
         data, addr = video_socket.recvfrom(2048)
-        # cv2.imshow('test', data)
-        # print data
+        # idx, data = mpeg_ts_parser.parse_for_tobii(data)
         sys.stdout.write(data)
+        # if idx == -1:
+        #     for d in data:
+        #         img.extend(d)
+        # else:
+        #     for d in data[:idx]:
+        #         img.extend(d)
+        #     print(np.array(img).shape)
+        #     cv2.imshow('test', np.array(img))
+        #     img = []
+        # cv2.imshow('test', data)
+        # sys.stdout.write(data)
         # bytes = ''
         # try:
         #     bytes += data
